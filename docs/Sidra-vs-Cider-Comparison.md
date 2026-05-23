@@ -1,6 +1,6 @@
 # Sidra vs Cider: Apple Music desktop client comparison
 
-**Last updated:** 2026-03-27
+**Last updated:** 2026-05-23
 **Confidence note:** Cider v1 (open-source, AGPL-3.0) analysis is based on source code inspection of `ciderapp/Cider` on GitHub. Cider 2+ (proprietary) analysis is based on public issue trackers, devlogs, changelogs, and community reports - no source code review was possible. Sidra analysis is based on full source code review.
 
 ---
@@ -14,6 +14,8 @@
 **If you care about security and auditability:** Sidra. Cider v1's source code shows `contextIsolation: false`, `nodeIntegration: true`, `webSecurity: false`, and an embedded Express server. Cider 2+ is proprietary and cannot be audited. Sidra follows Electron security best practices with `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true`, and an IPC channel allowlist.
 
 **If you use Linux and need working media controls:** Sidra. Cider's MPRIS implementation has documented ongoing issues including playerctl not recognising it as a client (issue #1291, November 2025, still open) and track length reporting `9223372036854775807` on song changes (issue #1301, December 2025, still open).
+
+**If you want Apple Account sign-in to stay on supported desktop paths:** Sidra. It uses Apple's own web authentication, but hides passkey and "Sign in with iPhone" options that cannot complete in Electron because Chromium's QR-code UI lives outside the `//content` layer Electron ships.
 
 **If you want free, open-source software:** Sidra (Blue Oak 1.0.0 licence). Cider v1 was AGPL-3.0 but is archived; Cider 2+ costs $3.49 on itch.io or $3.99 on the Microsoft Store.
 
@@ -269,6 +271,7 @@ Sidra's security posture, verified by a full security audit (Semgrep, Gitleaks, 
 | Android | No | Yes (Cider 2+) |
 | Auto-update | AppImage and NSIS (silent OTA); deb/rpm/Nix (notification) | Via itch.io / Microsoft Store |
 | **Other** | | |
+| Apple Account sign-in | Apple's own web auth; unsupported passkey and "Sign in with iPhone" desktop flows hidden | Custom MusicKit auth; public reports of auth failures in Cider 2+ |
 | Localisation | 32 languages | Multiple languages (Crowdin-managed in v1) |
 | Plugin system | No | Yes (Cider v1, limited in 2+) |
 | Open source | Yes (Blue Oak 1.0.0) | No (v1 archived; 2+ proprietary) |
@@ -281,6 +284,8 @@ Sidra's security posture, verified by a full security audit (Semgrep, Gitleaks, 
 ### How each handles Apple Music updates
 
 **Sidra:** Loads `music.apple.com` directly. When Apple updates the web player - new features, UI changes, bug fixes, API changes - Sidra inherits them automatically with zero developer intervention. The only maintenance surface is the MusicKit.js event API that the hook script observes, which has been stable.
+
+Sidra also keeps Apple's authentication UI, but filters impossible desktop choices. Apple's passkey and "Sign in with iPhone" buttons rely on WebAuthn cross-device transport and Chromium's `//chrome` product UI for the QR-code modal. Electron only ships `//content`, so Sidra hides those options in the auth iframe and leaves the password flow visible.
 
 **Cider:** Builds a complete custom UI on top of MusicKit.js as a library. When Apple changes the MusicKit API, deprecates endpoints, or modifies authentication flows, Cider must patch its own code to match. This creates a maintenance burden proportional to Cider's feature surface area.
 
@@ -316,6 +321,7 @@ The primary residual risk is MusicKit.js bugs in Apple's own web player, which a
 - Care about security and want an auditable open-source codebase
 - Prefer stability over features
 - Want automatic inheritance of Apple Music web player improvements
+- Want Apple Account sign-in without unsupported Electron passkey/iPhone dead ends
 - Do not want to pay for a music client on top of your Apple Music subscription
 - Need MDM bypass on macOS for Apple ID authentication
 

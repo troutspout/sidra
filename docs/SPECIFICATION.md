@@ -60,24 +60,24 @@ The codebase is tightly focused and as lean as possible. Five runtime dependenci
 ┌─────────────────────────────────────────────────────────┐
 │ CastLabs Electron (Widevine CDM auto-installed)         │
 │                                                         │
-│  ┌──────────────────────┐      ┌────────────────────┐  │
-│  │  Main Process        │◄─IPC─│  Renderer Process  │  │
-│  │                      │      │                    │  │
-│  │  ┌────────────────┐  │      │  music.apple.com   │  │
-│  │  │ IPC event hub  │  │      │  ┌──────────────┐  │  │
-│  │  │ (player.ts)    │  │      │  │ MusicKit.js  │  │  │
-│  │  └───────┬────────┘  │      │  └──────┬───────┘  │  │
-│  │          │           │      │         │ events   │  │
-│  │  ┌───────▼────────┐  │      │  ┌──────▼───────┐  │  │
-│  │  │ Integrations   │  │      │  │ Hook script  │  │  │
-│  │  │ ├─ MPRIS       │◄─┼──────┼──┤(injected JS) │  │  │
-│  │  │ ├─ Discord RPC │  │      │  └──────────────┘  │  │
-│  │  │ ├─ Notifier    │  │      │                    │  │
-│  │  │ └─ Taskbar/Dock│  │      │  ┌──────────────┐  │  │
-│  │  └───────┬────────┘  │      │  │  preload.ts  │  │  │
-│  │          │           │      │  │ (IPC bridge) │  │  │
-│  │  ┌───────▼────────┐  │      │  └──────────────┘  │  │
-│  │  │ electron-conf  │  │      └────────────────────┘  │
+│  ┌──────────────────────┐      ┌────────────────────┐   │
+│  │  Main Process        │◄─IPC─│  Renderer Process  │   │
+│  │                      │      │                    │   │
+│  │  ┌────────────────┐  │      │  music.apple.com   │   │
+│  │  │ IPC event hub  │  │      │  ┌──────────────┐  │   │
+│  │  │ (player.ts)    │  │      │  │ MusicKit.js  │  │   │
+│  │  └───────┬────────┘  │      │  └──────┬───────┘  │   │
+│  │          │           │      │         │ events   │   │
+│  │  ┌───────▼────────┐  │      │  ┌──────▼───────┐  │   │
+│  │  │ Integrations   │  │      │  │ Hook script  │  │   │
+│  │  │ ├─ MPRIS       │◄─┼──────┼──┤(injected JS) │  │   │
+│  │  │ ├─ Discord RPC │  │      │  └──────────────┘  │   │
+│  │  │ ├─ Notifier    │  │      │                    │   │
+│  │  │ └─ Taskbar/Dock│  │      │  ┌──────────────┐  │   │
+│  │  └───────┬────────┘  │      │  │  preload.ts  │  │   │
+│  │          │           │      │  │ (IPC bridge) │  │   │
+│  │  ┌───────▼────────┐  │      │  └──────────────┘  │   │
+│  │  │ electron-conf  │  │      └────────────────────┘   │
 │  │  └────────────────┘  │                               │
 │  └──────────────────────┘                               │
 └─────────────────────────────────────────────────────────┘
@@ -145,6 +145,8 @@ sidra/
 │   ├── styleFix.css               — CSS overrides injected via webContents.insertCSS()
 │   │                                 Hides "Get the app" and "Open in Music" banners
 │   │                                 that Apple shows to push users toward native apps
+│   ├── authStyleFix.css           — CSS injected into Apple auth iframes to hide
+│   │                                 unsupported passkey and "Sign in with iPhone" options
 │   ├── catppuccin.css             — Optional Catppuccin palette overrides; injected when
 │   │                                 the theme preference is set to catppuccin
 │   └── icons/
@@ -166,26 +168,21 @@ sidra/
 
 ## Dependencies
 
-```json
-{
-  "devDependencies": {
-    "electron": "github:castlabs/electron-releases#v40.7.0+wvcus",
-    "electron-builder": "^26.8.2",
-    "shx": "^0.4.0",
-    "typescript": "^5.x",
-    "vitest": "^4.1.1"
-  },
-  "dependencies": {
-    "@holusion/dbus-next": "^0.11.2",
-    "@xhayper/discord-rpc": "^1.3.1",
-    "electron-log": "^5.x",
-    "electron-conf": "^1.3.0",
-    "electron-updater": "^6.8.3"
-  }
-}
-```
+Sidra keeps runtime dependencies narrow and purpose-driven. Each package must provide a platform integration or maintenance function that Electron, Node.js, or the standard library does not already cover.
 
-Five runtime dependencies. Compare to Cider v1's 25+.
+`package.json` is the source of truth for direct dependency names and version ranges. `package-lock.json` is the source of truth for resolved packages.
+
+Current dependency roles:
+
+- CastLabs Electron - application shell and Widevine CDM support
+- electron-builder - distributable package creation
+- TypeScript and Vitest - type checking and unit tests
+- electron-log - application logging
+- electron-conf - persistent user configuration
+- electron-updater - AppImage and NSIS update checks and installs
+- dbus-next - Linux MPRIS integration
+- Discord RPC - optional Discord Rich Presence
+- shx and npm scripts - cross-platform build helpers
 
 ### Logging
 
@@ -503,6 +500,20 @@ Apple Music storefront codes are ISO 3166-1 alpha-2 codes lowercased (e.g. `gb`,
 Non-issue by design. Cider's auth breaks because it uses MusicKit.js with a developer token it controls and the OAuth user-token flow. Sidra loads `music.apple.com` - Apple handles authentication entirely. Identical to opening Chrome and navigating to `music.apple.com`.
 
 The only implementation requirement: use a named persistent partition so cookies and localStorage survive between launches.
+
+### Passkeys and "Sign in with iPhone"
+
+Apple's sign-in page can offer passkey and "Sign in with iPhone" options inside auth iframes served from `auth.music.apple.com` and `idmsa.apple.com`. These flows rely on WebAuthn's cross-device hybrid transport (`caBLE`) and expect Chromium's `//chrome` product layer to render the QR-code modal. Electron only ships Chromium's `//content` layer, so the modal never appears and `navigator.credentials.get()` can hang behind a spinner. No command-line switch enables this missing UI; see [electron/electron#24573](https://github.com/electron/electron/issues/24573).
+
+Sidra treats these options as unsupported desktop auth paths and hides them before users can enter the dead-end flow. Password sign-in remains Apple's own web flow.
+
+Implementation:
+
+- `assets/authStyleFix.css` hides known passkey, iPhone, and cross-device button/container variants using attribute selectors that survive Apple's obfuscated class names.
+- `setupAuthFrameInjection()` listens for `did-frame-finish-load`, filters subframes to `auth.music.apple.com` and `idmsa.apple.com`, then injects the CSS and fallback script with `webFrameMain.executeJavaScript()`.
+- The fallback scans button text and standalone captions, hides only bounded containers, and installs a `MutationObserver` so Apple auth re-renders are handled.
+- Iframe console messages prefixed with `[sidra] auth-frame hide:` are forwarded to the `auth-frame` log scope.
+- `assets/authStyleFix.css` must stay listed in `asarUnpack`; packaged builds read it from disk at runtime.
 
 ### Window close behaviour
 
@@ -834,6 +845,7 @@ electron-updater manifest filenames are hardcoded and cannot be changed:
 | Content readiness polling | `amp-lcd[hydrated]` selector | Waits for Apple Music UI to hydrate before removing splash |
 | About window | Frameless `BrowserWindow` + `assets/about.html` | Localised labels via `about.json` |
 | Navigation bar | `assets/navigationBar.js` injected post-load | Back/forward/reload buttons in sidebar |
+| Auth iframe filtering | `authStyleFix.css` + `webFrameMain.executeJavaScript()` | Hides unsupported passkey and "Sign in with iPhone" desktop flows |
 | Zoom factor preference | `zoom` in `electron-conf` | 1.0x to 2.0x via tray submenu |
 | Wedge detector | `src/wedgeDetector.ts` | Auto-skip on playback stall |
 | Artwork cache | `src/artwork.ts` | UUID-based filenames, 7-day expiry, atomic writes |
@@ -871,4 +883,3 @@ electron-updater manifest filenames are hardcoded and cannot be changed:
 | Live radio stations crash | Medium | Confirmed | Known issue in apple-music-wrapper; investigate `did-crash` handler |
 | CSP blocks script injection | Low | Very low | `executeJavaScript()` bypasses page CSP in Electron |
 | Apple legal action | Medium | Very low | Multiple similar apps exist and have for years; requires Apple Music subscription |
-

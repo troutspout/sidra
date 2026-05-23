@@ -13,6 +13,14 @@ Sidra is Apple Music as a proper desktop citizen on Linux, macOS, and Windows - 
 Most Apple Music desktop clients break the audio, mangle the playback controls, or bury you under a custom UI that Apple never signed off on - the problem is worst on Linux.
 Sidra takes the opposite approach: wrap `music.apple.com` directly, stay out of the way, and let the audio through untouched. Apple owns the interface and keeps it current; Sidra inherits every improvement automatically.
 
+**As featured on [Linux Matters](https://linuxmatters.sh) podcast!** 🎙️ I am a presenter on Linux Matters and I discussed some of the backstory and how came to create Sidra on [Episode 79 - Pouring out the Sidra](https://linuxmatters.sh/79/).
+
+<div align="center">
+  <a href="https://linuxmatters.sh" target="_blank"><img src="https://github.com/wimpysworld/nix-config/raw/main/.github/screenshots/linuxmatters.png" alt="Linux Matters Podcast"/></a>
+  <br />
+  <em>Linux Matters Podcast</em>
+</div>
+
 ---
 
 ## Features
@@ -75,11 +83,7 @@ sudo zypper install ./Sidra-*.rpm   # openSUSE
 
 ```bash
 sudo snap install sidra
-sudo snap connect sidra:mpris :mpris
 ```
-
-The `mpris` interface must be connected manually until the Snap Store grants auto-connect; without it, system media controls (`playerctl`, GSConnect, KDE/GNOME media widgets) cannot reach Sidra.
-The Snap Store currently tracks the `edge` channel; promotions to `beta`, `candidate`, and `stable` will follow as the package is validated.
 
 **AUR** - Arch Linux and derivatives:
 
@@ -106,12 +110,6 @@ xattr -d com.apple.quarantine /Applications/Sidra.app
 ```
 
 Or open System Settings → Privacy & Security and click **Open Anyway** after the first blocked attempt.
-
-**Nix**:
-
-```bash
-nix profile install github:wimpysworld/sidra
-```
 
 ### Windows
 
