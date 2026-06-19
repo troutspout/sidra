@@ -65,16 +65,31 @@ Grab the latest release from [GitHub Releases](https://github.com/wimpysworld/si
 
 ### Linux
 
-**AppImage** - runs anywhere, no installation:
+**AppImage**
+
+On Debian 13 (Trixie) and Ubuntu 24.04 or newer, install the AppImage FUSE dependency first:
+
+```bash
+sudo apt install libfuse2t64
+```
+
+Runs anywhere, no installation:
 
 ```bash
 chmod +x Sidra-*.AppImage && ./Sidra-*.AppImage
 ```
 
-**Debian/Ubuntu**, **Fedora**, **openSUSE**:
+**Debian/Ubuntu**
+
+Use the `.deb` package unless you need AppImage:
 
 ```bash
-sudo apt install ./Sidra-*.deb      # Debian/Ubuntu
+sudo apt install ./Sidra-*.deb
+```
+
+**Fedora/openSUSE**
+
+```bash
 sudo dnf install ./Sidra-*.rpm      # Fedora
 sudo zypper install ./Sidra-*.rpm   # openSUSE
 ```
