@@ -25,6 +25,7 @@ jobs:
         uses: actions/checkout@v7
         with:
           fetch-depth: 0
+          persist-credentials: false
       - name: Setup Node 🧰
         uses: actions/setup-node@v6
         with:
@@ -44,6 +45,8 @@ jobs:
         env:
           EVS_ACCOUNT_NAME: ${{ secrets.EVS_ACCOUNT_NAME }}
           EVS_PASSWD: ${{ secrets.EVS_PASSWD }}
+      - name: Fix Snap Artefact Ownership 🔐
+        run: sudo chown -R "$USER:$USER" release
       - name: Upload Artefacts 📤
         uses: actions/upload-artifact@v7
         with:
@@ -52,11 +55,39 @@ jobs:
           retention-days: 7
       - name: Locate Snap File 🔍
         id: find
-        run: echo "snap=$(ls release/*.snap)" >> "$GITHUB_OUTPUT"
-      - name: Publish to Snap Store Edge 🚀
-        uses: snapcore/action-publish@v1
+        run: |
+          set -euo pipefail
+          snap_file=$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)
+          if [[ -z "$snap_file" ]]; then
+            echo "No snap package found in release/" >&2
+            exit 1
+          fi
+          echo "snap=$snap_file" >> "$GITHUB_OUTPUT"
+      - name: Upload Snap to Store 🚀
+        id: upload
+        run: |
+          set -euo pipefail
+          upload_output=$(snapcraft upload "$SNAP_FILE")
+          printf '%s\n' "$upload_output"
+          revision=$(printf '%s\n' "$upload_output" | sed -nE 's/.*Revision[[:space:]]+([0-9]+).*/\1/p' | tail -n1)
+          if [[ -z "$revision" ]]; then
+            echo "Could not determine snap revision from upload output" >&2
+            exit 1
+          fi
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
         env:
+          SNAP_FILE: ${{ steps.find.outputs.snap }}
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: ${{ steps.find.outputs.snap }}
-          release: edge
+      - name: Release Snap to Edge 🚀
+        run: snapcraft release "$SNAP_NAME" "$SNAP_REVISION" "$SNAP_CHANNEL"
+        env:
+          SNAP_NAME: sidra
+          SNAP_REVISION: ${{ steps.upload.outputs.revision }}
+          SNAP_CHANNEL: edge
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+      - name: Show Snap Store Revisions 🔎
+        continue-on-error: true
+        run: snapcraft revisions "$SNAP_NAME" --arch amd64
+        env:
+          SNAP_NAME: sidra
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}

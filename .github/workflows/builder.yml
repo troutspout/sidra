@@ -264,14 +264,44 @@ jobs:
           path: release/
       - name: Locate snap file
         id: find
-        run: echo "snap=$(ls release/*.snap)" >> "$GITHUB_OUTPUT"
-      - name: Publish to Snap Store edge
-        uses: snapcore/action-publish@v1
+        run: |
+          set -euo pipefail
+          snap_file=$(find release -maxdepth 1 -type f -name '*.snap' -print -quit)
+          if [[ -z "$snap_file" ]]; then
+            echo "No snap package found in release/" >&2
+            exit 1
+          fi
+          echo "snap=$snap_file" >> "$GITHUB_OUTPUT"
+      - name: Install snapcraft
+        run: sudo snap install snapcraft --classic
+      - name: Upload snap to Store
+        id: upload
+        run: |
+          set -euo pipefail
+          upload_output=$(snapcraft upload "$SNAP_FILE")
+          printf '%s\n' "$upload_output"
+          revision=$(printf '%s\n' "$upload_output" | sed -nE 's/.*Revision[[:space:]]+([0-9]+).*/\1/p' | tail -n1)
+          if [[ -z "$revision" ]]; then
+            echo "Could not determine snap revision from upload output" >&2
+            exit 1
+          fi
+          echo "revision=$revision" >> "$GITHUB_OUTPUT"
         env:
+          SNAP_FILE: ${{ steps.find.outputs.snap }}
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
-        with:
-          snap: ${{ steps.find.outputs.snap }}
-          release: edge
+      - name: Release snap to edge
+        run: snapcraft release "$SNAP_NAME" "$SNAP_REVISION" "$SNAP_CHANNEL"
+        env:
+          SNAP_NAME: sidra
+          SNAP_REVISION: ${{ steps.upload.outputs.revision }}
+          SNAP_CHANNEL: edge
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
+      - name: Show Snap Store revisions
+        continue-on-error: true
+        run: snapcraft revisions "$SNAP_NAME" --arch amd64
+        env:
+          SNAP_NAME: sidra
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAPCRAFT_STORE_CREDENTIALS }}
 
   nix-hash:
     name: Nix Hash 🔑
