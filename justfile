@@ -246,6 +246,7 @@ release VERSION:
     echo ""
     echo "To publish the release:"
     echo "  git push origin main"
+    echo "  # Wait for the Builder workflow on main to pass"
     echo "  git push origin $version"
     echo ""
     echo "This will trigger the GitHub Actions release workflow which will:"
