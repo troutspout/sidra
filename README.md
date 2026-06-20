@@ -118,13 +118,18 @@ For NixOS or Home Manager, add `github:wimpysworld/sidra` as a flake input and r
 
 **DMG** - open and drag Sidra to Applications.
 
-The app is unsigned, so Gatekeeper blocks the first launch. Either remove the quarantine attribute:
+> [!WARNING]
+> On first launch macOS may report:
+> _"Sidra.app" is damaged and can't be opened. You should move it to the Bin._
+> The app is unsigned, not corrupt. macOS shows this because the download is quarantined.
+
+Strip the quarantine attribute in Terminal, then open Sidra normally:
 
 ```bash
-xattr -d com.apple.quarantine /Applications/Sidra.app
+xattr -dr com.apple.quarantine /Applications/Sidra.app
 ```
 
-Or open System Settings → Privacy & Security and click **Open Anyway** after the first blocked attempt.
+System Settings → Privacy & Security only offers **Open Anyway** for the milder "unidentified developer" prompt, never for "damaged" - so Terminal is the dependable path.
 
 ### Windows
 
