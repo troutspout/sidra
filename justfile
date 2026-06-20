@@ -224,7 +224,7 @@ release VERSION:
     fi
 
     # Check if tag already exists
-    if git rev-parse "$version" >/dev/null 2>&1; then
+    if git rev-parse --verify --quiet "refs/tags/$version" >/dev/null; then
         echo "Error: Tag $version already exists" >&2
         exit 1
     fi
@@ -245,6 +245,7 @@ release VERSION:
     echo "✓ Tag $version created"
     echo ""
     echo "To publish the release:"
+    echo "  git push origin main"
     echo "  git push origin $version"
     echo ""
     echo "This will trigger the GitHub Actions release workflow which will:"
