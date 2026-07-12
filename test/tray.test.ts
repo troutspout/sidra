@@ -16,6 +16,9 @@ vi.mock('../src/config', () => ({
   getCloseToTrayEnabled: vi.fn(() => false),
   setCloseToTrayEnabled: vi.fn(),
   getMusicService: vi.fn(() => 'music'),
+  setMusicService: vi.fn(),
+  getClassicalStartPage: vi.fn(() => 'home'),
+  setClassicalStartPage: vi.fn(),
 }));
 
 const mockTrayStrings: TrayStrings = {
@@ -23,11 +26,16 @@ const mockTrayStrings: TrayStrings = {
   quit: 'Quit',
   notifications: 'Notifications',
   discord: 'Discord',
+  player: 'Player',
   startPage: 'Start Page',
   startPageHome: 'Home',
   startPageNew: 'New',
   startPageRadio: 'Radio',
   startPageAllPlaylists: 'All Playlists',
+  startPageBrowse: 'Browse',
+  startPageLibrary: 'Library',
+  startPagePlaylists: 'Playlists',
+  startPageSearch: 'Search',
   startPageLast: 'Last',
   on: 'On',
   off: 'Off',

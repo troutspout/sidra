@@ -3,7 +3,8 @@ import log from 'electron-log/main';
 import { Client } from '@xhayper/discord-rpc';
 import { ActivityType } from 'discord-api-types/v10';
 import { Player, NowPlayingPayload, PlaybackState, PlaybackStatePayload, IntegrationContext } from '../../player';
-import { getDiscordEnabled } from '../../config';
+import { getDiscordEnabled, getMusicService } from '../../config';
+import { getService } from '../../musicService';
 import { createPauseTimer } from '../../pauseTimer';
 
 const discordLog = log.scope('discord');
@@ -116,7 +117,8 @@ function sendActivity(): void {
     { label: 'Sidra', url: 'https://github.com/wimpysworld/sidra' },
   ];
   if (trackUrl) {
-    buttons.push({ label: 'Play on Apple Music', url: trackUrl });
+    const displayName = getService(getMusicService()).displayName;
+    buttons.push({ label: `Play on ${displayName}`, url: trackUrl });
   }
 
   const activity: Record<string, unknown> = {

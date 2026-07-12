@@ -66,12 +66,11 @@ describe('getService', () => {
 });
 
 describe('preload contract', () => {
-  it('postMessage origin literal matches music service registry', () => {
+  it('postMessage uses window.location.origin (service-agnostic)', () => {
     const preload = fs.readFileSync(
       path.join(__dirname, '..', 'src', 'preload.ts'),
       'utf-8',
     );
-    const origin = MUSIC_SERVICES['music'].origin;
-    expect(preload).toMatch(new RegExp(`window\\.postMessage\\(.*'${origin}'\\)`));
+    expect(preload).toMatch(/window\.postMessage\(.*window\.location\.origin\)/);
   });
 });

@@ -14,6 +14,8 @@ interface StoreSchema {
   'autoUpdate.enabled': boolean;
   startPage: 'home' | 'new' | 'radio' | 'all-playlists' | 'last';
   lastPageUrl: string;
+  'classical.startPage': string;
+  'classical.lastPageUrl': string;
   zoomFactor: number;
   musicService: MusicServiceId;
 }
@@ -129,5 +131,23 @@ export function getMusicService(): MusicServiceId {
 export function setMusicService(id: MusicServiceId): void {
   store.set('musicService', id);
   configLog.info('musicService set:', id);
+}
+
+export function getClassicalStartPage(): string {
+  return getConfigValue('classical.startPage', 'home');
+}
+
+export function setClassicalStartPage(page: string): void {
+  store.set('classical.startPage', page);
+  configLog.info('classical.startPage set:', page);
+}
+
+export function getClassicalLastPageUrl(): string | undefined {
+  return getConfigValueOptional('classical.lastPageUrl');
+}
+
+export function setClassicalLastPageUrl(url: string): void {
+  store.set('classical.lastPageUrl', url);
+  configLog.info('classical.lastPageUrl set:', url);
 }
 
