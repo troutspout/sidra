@@ -1,0 +1,227 @@
+// Pure module: no electron imports so tests can exercise it directly.
+//
+// Bundled theme palettes. Each palette maps an upstream colour scheme
+// onto the 12 semantic slots consumed by src/themeTemplate.ts. Shades
+// marked "derived" have no upstream equivalent and are interpolated to
+// fit the slot's role.
+//
+// Upstream palettes (colour values only; palettes are not creative
+// works, attribution given as a courtesy):
+// - Catppuccin (Mocha/Latte)  https://github.com/catppuccin/palette      MIT
+// - Dracula                   https://github.com/dracula/dracula-theme   MIT
+// - Gruvbox                   https://github.com/morhetz/gruvbox         MIT
+// - Nord                      https://github.com/nordtheme/nord          MIT
+// - Ros\u00e9 Pine (Main/Dawn)     https://github.com/rose-pine/palette       MIT
+// - Solarized                 https://github.com/altercation/solarized   MIT
+
+import type { SchemeColours, ThemeDefinition } from './themeTemplate';
+
+interface BundledTheme extends ThemeDefinition {
+  name: BundledThemeName;
+}
+
+export type BundledThemeName =
+  | 'catppuccin'
+  | 'dracula'
+  | 'gruvbox'
+  | 'nord'
+  | 'rose-pine'
+  | 'solarized';
+
+// Dracula defines no official light scheme; the dark palette serves both
+// colour schemes, matching how Dracula presents everywhere else.
+const draculaDark: SchemeColours = {
+  base: '#282a36',
+  mantle: '#21222c',
+  crust: '#191a21',
+  surface0: '#343746',
+  surface1: '#44475a',
+  surface2: '#565966', // derived
+  overlay: '#6272a4',
+  text: '#f8f8f2',
+  subtext1: '#d8d8d2', // derived
+  subtext0: '#b8b8b2', // derived
+  accent: '#bd93f9',
+  accentHover: '#ff79c6',
+};
+
+export const BUNDLED_THEMES: readonly BundledTheme[] = [
+  {
+    name: 'catppuccin',
+    label: 'Catppuccin',
+    dark: {
+      // Mocha
+      base: '#1e1e2e',
+      mantle: '#181825',
+      crust: '#11111b',
+      surface0: '#313244',
+      surface1: '#45475a',
+      surface2: '#585b70',
+      overlay: '#6c7086',
+      text: '#cdd6f4',
+      subtext1: '#bac2de',
+      subtext0: '#a6adc8',
+      accent: '#f38ba8',
+      accentHover: '#eba0ac',
+    },
+    light: {
+      // Latte
+      base: '#eff1f5',
+      mantle: '#e6e9ef',
+      crust: '#dce0e8',
+      surface0: '#ccd0da',
+      surface1: '#bcc0cc',
+      surface2: '#acb0be',
+      overlay: '#9ca0b0',
+      text: '#4c4f69',
+      subtext1: '#5c5f77',
+      subtext0: '#6c6f85',
+      accent: '#d20f39',
+      accentHover: '#e64553',
+    },
+  },
+  {
+    name: 'dracula',
+    label: 'Dracula',
+    dark: draculaDark,
+    light: draculaDark,
+  },
+  {
+    name: 'gruvbox',
+    label: 'Gruvbox',
+    dark: {
+      base: '#282828',
+      mantle: '#1d2021',
+      crust: '#141617', // derived
+      surface0: '#3c3836',
+      surface1: '#504945',
+      surface2: '#665c54',
+      overlay: '#7c6f64',
+      text: '#ebdbb2',
+      subtext1: '#d5c4a1',
+      subtext0: '#bdae93',
+      accent: '#fe8019',
+      accentHover: '#d65d0e',
+    },
+    light: {
+      base: '#fbf1c7',
+      mantle: '#f2e5bc',
+      crust: '#ebdbb2',
+      surface0: '#ebdbb2',
+      surface1: '#d5c4a1',
+      surface2: '#bdae93',
+      overlay: '#a89984',
+      text: '#3c3836',
+      subtext1: '#504945',
+      subtext0: '#665c54',
+      accent: '#af3a03',
+      accentHover: '#d65d0e',
+    },
+  },
+  {
+    name: 'nord',
+    label: 'Nord',
+    dark: {
+      // Polar Night with Frost accent
+      base: '#2e3440',
+      mantle: '#292e39', // derived
+      crust: '#242933', // derived
+      surface0: '#3b4252',
+      surface1: '#434c5e',
+      surface2: '#4c566a',
+      overlay: '#616e88', // derived
+      text: '#eceff4',
+      subtext1: '#e5e9f0',
+      subtext0: '#d8dee9',
+      accent: '#88c0d0',
+      accentHover: '#81a1c1',
+    },
+    light: {
+      // Snow Storm with darker Frost accent for contrast
+      base: '#eceff4',
+      mantle: '#e5e9f0',
+      crust: '#d8dee9',
+      surface0: '#d8dee9',
+      surface1: '#c2c9d6', // derived
+      surface2: '#aab2c4', // derived
+      overlay: '#7b88a1', // derived
+      text: '#2e3440',
+      subtext1: '#3b4252',
+      subtext0: '#4c566a',
+      accent: '#5e81ac',
+      accentHover: '#81a1c1',
+    },
+  },
+  {
+    name: 'rose-pine',
+    label: 'Ros\u00e9 Pine',
+    dark: {
+      // Main
+      base: '#191724',
+      mantle: '#13111d', // derived
+      crust: '#0e0c15', // derived
+      surface0: '#26233a',
+      surface1: '#403d52',
+      surface2: '#524f67',
+      overlay: '#6e6a86',
+      text: '#e0def4',
+      subtext1: '#908caa',
+      subtext0: '#6e6a86',
+      accent: '#ebbcba',
+      accentHover: '#eb6f92',
+    },
+    light: {
+      // Dawn
+      base: '#faf4ed',
+      mantle: '#f2e9e1',
+      crust: '#ede0d4', // derived
+      surface0: '#f4ede8',
+      surface1: '#dfdad9',
+      surface2: '#cecacd',
+      overlay: '#9893a5',
+      text: '#575279',
+      subtext1: '#797593',
+      subtext0: '#9893a5',
+      accent: '#d7827e',
+      accentHover: '#b4637a',
+    },
+  },
+  {
+    name: 'solarized',
+    label: 'Solarized',
+    dark: {
+      base: '#002b36',
+      mantle: '#00252e', // derived
+      crust: '#001f27', // derived
+      surface0: '#073642',
+      surface1: '#0e4552', // derived
+      surface2: '#586e75',
+      overlay: '#657b83',
+      text: '#93a1a1',
+      subtext1: '#839496',
+      subtext0: '#657b83',
+      accent: '#268bd2',
+      accentHover: '#2aa198',
+    },
+    light: {
+      base: '#fdf6e3',
+      mantle: '#f5eed9', // derived
+      crust: '#eee8d5',
+      surface0: '#eee8d5',
+      surface1: '#ddd6c1', // derived
+      surface2: '#93a1a1',
+      overlay: '#839496',
+      text: '#586e75',
+      subtext1: '#657b83',
+      subtext0: '#839496',
+      accent: '#268bd2',
+      accentHover: '#2aa198',
+    },
+  },
+];
+
+export function themeLabel(name: string): string {
+  if (name === 'custom') return 'Custom';
+  const theme = BUNDLED_THEMES.find(t => t.name === name);
+  return theme ? theme.label : 'Apple Music';
+}
