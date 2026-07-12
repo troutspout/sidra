@@ -32,6 +32,59 @@
       }
 
       /**
+       * Report explicit media session position state for OS media controls.
+       * @returns {void}
+       */
+      function reportPositionState() {
+        if (typeof navigator === 'undefined' ||
+            !navigator.mediaSession ||
+            typeof navigator.mediaSession.setPositionState !== 'function') {
+          return;
+        }
+
+        let duration;
+        if (Number.isFinite(mk.currentPlaybackDuration) &&
+            mk.currentPlaybackDuration > 0) {
+          duration = mk.currentPlaybackDuration;
+        } else {
+          const durationInMillis = mk.nowPlayingItem?.attributes?.durationInMillis;
+          if (!Number.isFinite(durationInMillis) || durationInMillis <= 0) return;
+          duration = durationInMillis / 1000;
+        }
+
+        const position = mk.currentPlaybackTime;
+        if (!Number.isFinite(position) || position < 0) return;
+
+        try {
+          navigator.mediaSession.setPositionState({
+            duration,
+            playbackRate: 1,
+            position: Math.min(position, duration),
+          });
+        } catch (_) {
+          // Ignore media session position state errors.
+        }
+      }
+
+      /**
+       * Clear media session position state for OS media controls.
+       * @returns {void}
+       */
+      function clearPositionState() {
+        if (typeof navigator === 'undefined' ||
+            !navigator.mediaSession ||
+            typeof navigator.mediaSession.setPositionState !== 'function') {
+          return;
+        }
+
+        try {
+          navigator.mediaSession.setPositionState();
+        } catch (_) {
+          // Ignore media session position state errors.
+        }
+      }
+
+      /**
        * Forward playback state changes to the main process.
        * @param {{ state: number }} event - MusicKit playbackStateDidChange event
        */
@@ -50,6 +103,7 @@
       mk.addEventListener('nowPlayingItemDidChange', ({ item }) => {
         if (!item) {
           window.AMWrapper.ipcRenderer.send('nowPlayingItemDidChange', null);
+          clearPositionState();
           return;
         }
         const pp = item.attributes?.playParams;
@@ -91,6 +145,7 @@
         window.AMWrapper.ipcRenderer.send('playbackTimeDidChange',
           mk.currentPlaybackTime * 1_000_000
         );
+        reportPositionState();
       });
 
       /** Forward repeat mode changes to the main process. */
