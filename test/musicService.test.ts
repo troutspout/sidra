@@ -5,6 +5,8 @@ import {
   MUSIC_SERVICES,
   DEFAULT_SERVICE_ID,
   getService,
+  getServiceByHost,
+  allServices,
 } from '../src/musicService';
 import type { MusicServiceId, MusicService } from '../src/musicService';
 
@@ -43,6 +45,35 @@ describe('MUSIC_SERVICES registry', () => {
     expect(MUSIC_SERVICES['music'].authFrameHosts).toContain('auth.music.apple.com');
     expect(MUSIC_SERVICES['music'].authFrameHosts).toContain('idmsa.apple.com');
   });
+
+  it('contains the classical entry', () => {
+    expect(MUSIC_SERVICES['classical']).toBeDefined();
+  });
+
+  it('classical entry has correct id', () => {
+    expect(MUSIC_SERVICES['classical'].id).toBe('classical');
+  });
+
+  it('classical entry has correct host', () => {
+    expect(MUSIC_SERVICES['classical'].host).toBe('classical.music.apple.com');
+  });
+
+  it('classical entry has correct origin', () => {
+    expect(MUSIC_SERVICES['classical'].origin).toBe('https://classical.music.apple.com');
+  });
+
+  it('classical entry has correct displayName', () => {
+    expect(MUSIC_SERVICES['classical'].displayName).toBe('Apple Music Classical');
+  });
+
+  it('classical entry has start pages', () => {
+    expect(MUSIC_SERVICES['classical'].startPages.length).toBeGreaterThan(0);
+    expect(MUSIC_SERVICES['classical'].startPages.map(p => p.id)).toContain('home');
+  });
+
+  it('classical entry has a defaultStartPage', () => {
+    expect(MUSIC_SERVICES['classical'].defaultStartPage).toBe('home');
+  });
 });
 
 describe('DEFAULT_SERVICE_ID', () => {
@@ -62,6 +93,37 @@ describe('getService', () => {
 
   it('returns same object as MUSIC_SERVICES registry', () => {
     expect(getService('music')).toBe(MUSIC_SERVICES['music']);
+  });
+});
+
+describe('getServiceByHost', () => {
+  it('returns the music service for music.apple.com', () => {
+    const svc = getServiceByHost('music.apple.com');
+    expect(svc).toBeDefined();
+    expect(svc!.id).toBe('music');
+  });
+
+  it('returns the classical service for classical.music.apple.com', () => {
+    const svc = getServiceByHost('classical.music.apple.com');
+    expect(svc).toBeDefined();
+    expect(svc!.id).toBe('classical');
+  });
+
+  it('returns undefined for an unknown host', () => {
+    expect(getServiceByHost('unknown.example.com')).toBeUndefined();
+  });
+
+  it('returns undefined for an empty string', () => {
+    expect(getServiceByHost('')).toBeUndefined();
+  });
+});
+
+describe('allServices', () => {
+  it('returns an array containing both services', () => {
+    const svcs = allServices();
+    expect(svcs.length).toBe(2);
+    expect(svcs.map(s => s.id)).toContain('music');
+    expect(svcs.map(s => s.id)).toContain('classical');
   });
 });
 

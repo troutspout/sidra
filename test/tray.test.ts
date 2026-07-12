@@ -92,7 +92,7 @@ vi.mock('../src/paths', () => ({
 import { BrowserWindow, Menu, Tray, nativeImage, nativeTheme } from 'electron';
 import { getUpdateInfo } from '../src/update';
 import { truncateMenuLabel, sanitiseLinuxLabel, createTray, getMenuIcon, updateNowPlayingState, updateTrayTooltip, rebuildTrayMenu, initTrayStateManager, setGetMainWindowCallback } from '../src/tray';
-import { getCloseToTrayEnabled, setTheme } from '../src/config';
+import { getCloseToTrayEnabled, setTheme, getMusicService, getClassicalStartPage } from '../src/config';
 import { downloadArtwork } from '../src/artwork';
 import { Player, PlaybackState } from '../src/player';
 import type { NowPlayingPayload } from '../src/player';
@@ -411,6 +411,115 @@ describe('createTray - menu template inspection', () => {
       expect(findItem(template, 'Style')).toBeDefined();
       expect(findItem(template, 'Zoom')).toBeDefined();
       expect(findItem(template, 'Quit')).toBeDefined();
+    });
+  });
+
+  describe('Player submenu', () => {
+    beforeEach(() => {
+      setPlatform('linux');
+      vi.mocked(getMusicService).mockReturnValue('music');
+      vi.mocked(resolveTheme).mockReturnValue('apple-music');
+      vi.mocked(hasCustomCss).mockReturnValue(false);
+    });
+
+    it('Player submenu parent is present in the template', () => {
+      createTray();
+      const template = getLastTemplate();
+      const playerItem = findItem(template, 'Player');
+      expect(playerItem).toBeDefined();
+    });
+
+    it('Player submenu parent label shows active service', () => {
+      createTray();
+      const template = getLastTemplate();
+      const playerItem = findItem(template, 'Player');
+      expect(playerItem!.label).toBe('Player: Apple Music');
+    });
+
+    it('Apple Music radio item is checked when music service is active', () => {
+      createTray();
+      const template = getLastTemplate();
+      const playerItem = findItem(template, 'Player');
+      const submenu = playerItem!.submenu as Electron.MenuItemConstructorOptions[];
+      const musicItem = submenu.find(item => item.label === 'Apple Music');
+      expect(musicItem).toBeDefined();
+      expect(musicItem!.checked).toBe(true);
+    });
+
+    it('Apple Music Classical radio item is unchecked when music service is active', () => {
+      createTray();
+      const template = getLastTemplate();
+      const playerItem = findItem(template, 'Player');
+      const submenu = playerItem!.submenu as Electron.MenuItemConstructorOptions[];
+      const classicalItem = submenu.find(item => item.label === 'Apple Music Classical');
+      expect(classicalItem).toBeDefined();
+      expect(classicalItem!.checked).toBe(false);
+    });
+
+    it('Player submenu parent label shows Classical when classical is active', () => {
+      vi.mocked(getMusicService).mockReturnValue('classical');
+      createTray();
+      const template = getLastTemplate();
+      const playerItem = findItem(template, 'Player');
+      expect(playerItem!.label).toBe('Player: Apple Music Classical');
+    });
+
+    it('Apple Music Classical radio item is checked when classical service is active', () => {
+      vi.mocked(getMusicService).mockReturnValue('classical');
+      createTray();
+      const template = getLastTemplate();
+      const playerItem = findItem(template, 'Player');
+      const submenu = playerItem!.submenu as Electron.MenuItemConstructorOptions[];
+      const classicalItem = submenu.find(item => item.label === 'Apple Music Classical');
+      expect(classicalItem!.checked).toBe(true);
+    });
+  });
+
+  describe('Start Page submenu with classical service', () => {
+    beforeEach(() => {
+      setPlatform('linux');
+      vi.mocked(getMusicService).mockReturnValue('classical');
+      vi.mocked(getClassicalStartPage).mockReturnValue('home');
+      vi.mocked(resolveTheme).mockReturnValue('apple-music');
+      vi.mocked(hasCustomCss).mockReturnValue(false);
+    });
+
+    it('Start Page submenu shows classical pages when classical is active', () => {
+      createTray();
+      const template = getLastTemplate();
+      const startPageItem = findItem(template, 'Start Page');
+      const submenu = startPageItem!.submenu as Electron.MenuItemConstructorOptions[];
+      const labels = submenu.map(item => item.label);
+      expect(labels).toContain('Home');
+      expect(labels).toContain('Browse');
+      expect(labels).toContain('Library');
+      expect(labels).not.toContain('New');
+      expect(labels).not.toContain('Radio');
+    });
+  });
+
+  describe('Style submenu disabled on Classical', () => {
+    beforeEach(() => {
+      setPlatform('linux');
+      vi.mocked(getMusicService).mockReturnValue('classical');
+      vi.mocked(resolveTheme).mockReturnValue('apple-music');
+      vi.mocked(hasCustomCss).mockReturnValue(false);
+    });
+
+    it('Style submenu is disabled when classical is active', () => {
+      createTray();
+      const template = getLastTemplate();
+      const styleItem = findItem(template, 'Style');
+      expect(styleItem).toBeDefined();
+      expect(styleItem!.enabled).toBe(false);
+    });
+
+    it('Style submenu is enabled when music service is active', () => {
+      vi.mocked(getMusicService).mockReturnValue('music');
+      createTray();
+      const template = getLastTemplate();
+      const styleItem = findItem(template, 'Style');
+      expect(styleItem!.enabled).toBe(true);
     });
   });
 

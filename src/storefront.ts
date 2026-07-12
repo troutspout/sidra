@@ -98,10 +98,6 @@ export function extractStorefrontFromURL(url: string): { storefront: string; lan
     }
     const segments = parsed.pathname.split('/').filter(Boolean);
     if (segments.length === 0) {
-      // Classical home page has no path segments
-      if (service.id === 'classical') {
-        return null;
-      }
       return null;
     }
     const storefront = segments[0];

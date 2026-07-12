@@ -65,11 +65,23 @@ vi.mock('../src/config', async () => {
     },
     setZoomFactor: (factor: number): void => { data.set('zoomFactor', factor); },
 
-    getMusicService: (): 'music' => {
+    getMusicService: (): MusicServiceId => {
       if (!data.has('musicService')) return 'music';
-      return data.get('musicService') as 'music';
+      return data.get('musicService') as MusicServiceId;
     },
-    setMusicService: (id: 'music'): void => { data.set('musicService', id); },
+    setMusicService: (id: MusicServiceId): void => { data.set('musicService', id); },
+
+    getClassicalStartPage: (): string => {
+      if (!data.has('classical.startPage')) return 'home';
+      return data.get('classical.startPage') as string;
+    },
+    setClassicalStartPage: (page: string): void => { data.set('classical.startPage', page); },
+
+    getClassicalLastPageUrl: (): string | undefined => {
+      if (!data.has('classical.lastPageUrl')) return undefined;
+      return data.get('classical.lastPageUrl') as string;
+    },
+    setClassicalLastPageUrl: (url: string): void => { data.set('classical.lastPageUrl', url); },
   };
 });
 
@@ -84,6 +96,8 @@ import {
   getStartPage, setStartPage,
   getZoomFactor, setZoomFactor,
   getMusicService, setMusicService,
+  getClassicalStartPage, setClassicalStartPage,
+  getClassicalLastPageUrl, setClassicalLastPageUrl,
 } from '../src/config';
 import type { MusicServiceId } from '../src/musicService';
 
@@ -170,6 +184,22 @@ describe('Config store type assertions', () => {
   it('setMusicService accepts MusicServiceId', () => {
     expectTypeOf(setMusicService).parameter(0).toEqualTypeOf<MusicServiceId>();
   });
+
+  it('getClassicalStartPage returns string', () => {
+    expectTypeOf(getClassicalStartPage).returns.toEqualTypeOf<string>();
+  });
+
+  it('setClassicalStartPage accepts string', () => {
+    expectTypeOf(setClassicalStartPage).parameter(0).toEqualTypeOf<string>();
+  });
+
+  it('getClassicalLastPageUrl returns string | undefined', () => {
+    expectTypeOf(getClassicalLastPageUrl).returns.toEqualTypeOf<string | undefined>();
+  });
+
+  it('setClassicalLastPageUrl accepts string', () => {
+    expectTypeOf(setClassicalLastPageUrl).parameter(0).toEqualTypeOf<string>();
+  });
 });
 
 describe('Config store runtime behaviour', () => {
@@ -217,5 +247,23 @@ describe('Config store runtime behaviour', () => {
   it('setMusicService persists value', () => {
     setMusicService('music');
     expect(getMusicService()).toBe('music');
+  });
+
+  it('getClassicalStartPage defaults to home', () => {
+    expect(getClassicalStartPage()).toBe('home');
+  });
+
+  it('setClassicalStartPage persists value', () => {
+    setClassicalStartPage('browse');
+    expect(getClassicalStartPage()).toBe('browse');
+  });
+
+  it('getClassicalLastPageUrl returns undefined when not set', () => {
+    expect(getClassicalLastPageUrl()).toBeUndefined();
+  });
+
+  it('setClassicalLastPageUrl persists value', () => {
+    setClassicalLastPageUrl('browse/albums');
+    expect(getClassicalLastPageUrl()).toBe('browse/albums');
   });
 });

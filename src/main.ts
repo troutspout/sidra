@@ -136,6 +136,7 @@ function routeItmsTarget(target: ItmsTarget | null): void {
   if (getMusicService() !== 'music') {
     setMusicService('music');
     if (appTray) rebuildTrayMenu(appTray);
+    resetWedgeDetector();
   }
   if (target.kind === 'url') {
     win.loadURL(target.url, { userAgent: UA }).catch(err =>

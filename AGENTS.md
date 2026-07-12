@@ -114,10 +114,30 @@ When adding a language, add an entry to every record in every JSON file:
 | `autoUpdate.enabled` | `boolean` | Enable automatic updates (default: true on AppImage and NSIS; disabled on all other platforms) |
 | `startPage` | `'home' \| 'new' \| 'radio' \| 'all-playlists' \| 'last'` | Page to load on launch (default: `'new'`) |
 | `lastPageUrl` | `string` | Last visited page URL; used when `startPage` is `'last'` |
-| `musicService` | `MusicServiceId` (`'music'`) | Active music service (default: `'music'`; reserved for future Classical support) |
+| `musicService` | `MusicServiceId` (`'music' \| 'classical'`) | Active music service (default: `'music'`) |
+| `classical.startPage` | `string` | Start page for Apple Music Classical (default: `'home'`); valid values: `'home'`, `'browse'`, `'library'`, `'playlists'`, `'search'`, `'last'` |
+| `classical.lastPageUrl` | `string` | Last visited Classical page URL; used when `classical.startPage` is `'last'` |
 
 - Getters return `undefined` when no value has been persisted - absence of a key is intentional and drives the storefront fallback chain in `main.ts`; do not add default values to the store schema
 - When adding new persistent settings, add typed getter/setter pairs to `config.ts` following the existing pattern; do not use `electron-conf` directly elsewhere
+
+### Service switching
+
+Switching services (tray Player submenu or itms:// deep-link routing) follows a strict sequence to avoid stale state:
+1. `resetWedgeDetector()` — clears the `isPlaying` flag so no spurious skip-forward attempts occur after page re-init
+2. `setMusicService(id)` — persists the new service id
+3. `rebuildTrayMenu(appTray)` — updates tray to reflect the new service
+4. `win.loadURL(buildAppleMusicURL())` — navigates to the new service's start page
+
+`itms://` deep links always target the music service; if Classical is active when an itms:// link arrives, the sequence above runs with id `'music'` before navigating.
+
+### Theme gating
+
+`resolveTheme()` in `src/theme.ts` forces `'apple-music'` when the classical service is active, so no override CSS is injected. The stored `theme` value is left unchanged — switching back to the music service restores the user's preferred theme. The Style submenu in the tray is disabled (`enabled: false`) when Classical is active.
+
+### postMessage target origin
+
+Playback controls are forwarded to the renderer via `window.postMessage(msg, window.location.origin)`. Using `window.location.origin` (rather than a hardcoded service origin) makes the bridge service-agnostic and passes the Chromium sandbox same-origin check for both `music.apple.com` and `classical.music.apple.com` without any conditional logic.
 
 ## CSS injection
 
