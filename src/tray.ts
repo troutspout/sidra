@@ -4,7 +4,7 @@ import log from 'electron-log/main';
 import { getTrayStrings, getUpdateStrings, getAutoUpdateStrings, type TrayStrings } from './i18n';
 import { getAssetPath, getProductInfo } from './paths';
 import { Player, PlaybackState, getShareUrl, type NowPlayingPayload } from './player';
-import { getNotificationsEnabled, setNotificationsEnabled, getDiscordEnabled, setDiscordEnabled, setTheme, getStartPage, setStartPage, getZoomFactor, setZoomFactor, getCloseToTrayEnabled, setCloseToTrayEnabled } from './config';
+import { getNotificationsEnabled, setNotificationsEnabled, getDiscordEnabled, setDiscordEnabled, setTheme, getStartPage, setStartPage, getZoomFactor, setZoomFactor, getCloseToTrayEnabled, setCloseToTrayEnabled, getMusicService, setMusicService, getClassicalStartPage, setClassicalStartPage } from './config';
 import { showAboutWindow } from './aboutWindow';
 import { getUpdateInfo } from './update';
 import { quitAndInstall } from './autoUpdate';
@@ -13,6 +13,7 @@ import { applyTheme, hasCustomCss, resolveTheme } from './theme';
 import { enable as enableDiscord, disable as disableDiscord } from './integrations/discord-presence';
 import { downloadArtwork } from './artwork';
 import { createPauseTimer } from './pauseTimer';
+import { allServices } from './musicService';
 
 const trayLog = log.scope('tray');
 
@@ -151,6 +152,7 @@ let nowPlayingState: NowPlayingState | null = null;
 let sendCommandCallback: ((channel: string, ...args: unknown[]) => void) | null = null;
 let applyZoomCallback: ((factor: number) => void) | null = null;
 let getMainWindowCallback: (() => BrowserWindow | null) | null = null;
+let switchServiceCallback: ((serviceId: string) => void) | null = null;
 
 interface SubmenuContext {
   strings: TrayStrings;
@@ -158,8 +160,87 @@ interface SubmenuContext {
   refresh: () => void;
 }
 
+function buildPlayerSubmenu(ctx: SubmenuContext): Electron.MenuItemConstructorOptions {
+  const { strings, refresh } = ctx;
+  const activeServiceId = getMusicService();
+  const activeService = allServices().find(s => s.id === activeServiceId)!;
+  const parentLabel = `${strings.player}: ${activeService.displayName}`;
+  return {
+    label: parentLabel,
+    submenu: allServices().map(svc => ({
+      label: svc.displayName,
+      type: 'radio' as const,
+      checked: activeServiceId === svc.id,
+      click: () => {
+        if (activeServiceId === svc.id) return;
+        setMusicService(svc.id);
+        if (switchServiceCallback) switchServiceCallback(svc.id);
+        refresh();
+      },
+    })),
+  };
+}
+
 function buildStartPageSubmenu(ctx: SubmenuContext): Electron.MenuItemConstructorOptions {
   const { strings, refresh } = ctx;
+  const activeServiceId = getMusicService();
+  const icon = getMenuIcon('start-page');
+
+  if (activeServiceId === 'classical') {
+    const currentPage = getClassicalStartPage();
+    const classicalPageLabelMap: Record<string, string> = {
+      'home': strings.startPageHome,
+      'browse': strings.startPageBrowse,
+      'library': strings.startPageLibrary,
+      'playlists': strings.startPagePlaylists,
+      'search': strings.startPageSearch,
+      'last': strings.startPageLast,
+    };
+    const parentLabel = `${strings.startPage}: ${classicalPageLabelMap[currentPage] ?? strings.startPageHome}`;
+    return {
+      label: parentLabel,
+      ...(icon ? { icon } : {}),
+      submenu: [
+        {
+          label: strings.startPageHome,
+          type: 'radio',
+          checked: currentPage === 'home',
+          click: () => { setClassicalStartPage('home'); refresh(); },
+        },
+        {
+          label: strings.startPageBrowse,
+          type: 'radio',
+          checked: currentPage === 'browse',
+          click: () => { setClassicalStartPage('browse'); refresh(); },
+        },
+        {
+          label: strings.startPageLibrary,
+          type: 'radio',
+          checked: currentPage === 'library',
+          click: () => { setClassicalStartPage('library'); refresh(); },
+        },
+        {
+          label: strings.startPagePlaylists,
+          type: 'radio',
+          checked: currentPage === 'playlists',
+          click: () => { setClassicalStartPage('playlists'); refresh(); },
+        },
+        {
+          label: strings.startPageSearch,
+          type: 'radio',
+          checked: currentPage === 'search',
+          click: () => { setClassicalStartPage('search'); refresh(); },
+        },
+        {
+          label: strings.startPageLast,
+          type: 'radio',
+          checked: currentPage === 'last',
+          click: () => { setClassicalStartPage('last'); refresh(); },
+        },
+      ],
+    };
+  }
+
   const currentStartPage = getStartPage();
   const startPageLabelMap: Record<string, string> = {
     'home': strings.startPageHome,
@@ -169,7 +250,6 @@ function buildStartPageSubmenu(ctx: SubmenuContext): Electron.MenuItemConstructo
     'last': strings.startPageLast,
   };
   const parentLabel = `${strings.startPage}: ${startPageLabelMap[currentStartPage]}`;
-  const icon = getMenuIcon('start-page');
   return {
     label: parentLabel,
     ...(icon ? { icon } : {}),
@@ -290,6 +370,7 @@ function buildDiscordSubmenu(ctx: SubmenuContext): Electron.MenuItemConstructorO
 
 function buildStyleSubmenu(ctx: SubmenuContext): Electron.MenuItemConstructorOptions {
   const { strings, refresh } = ctx;
+  const isClassical = getMusicService() === 'classical';
   const currentTheme = resolveTheme();
   const parentLabel = `${strings.style}: ${currentTheme === 'apple-music' ? strings.styleAppleMusic : themeLabel(currentTheme)}`;
   const icon = getMenuIcon('style');
@@ -318,6 +399,7 @@ function buildStyleSubmenu(ctx: SubmenuContext): Electron.MenuItemConstructorOpt
   return {
     label: parentLabel,
     ...(icon ? { icon } : {}),
+    enabled: !isClassical,
     submenu: items,
   };
 }
@@ -568,6 +650,7 @@ function buildContextMenu(tray: Tray): Menu {
       ...(aboutIcon ? { icon: aboutIcon } : {}),
       click: () => showAboutWindow(),
     },
+    buildPlayerSubmenu(ctx),
     buildStartPageSubmenu(ctx),
     buildNotificationsSubmenu(ctx),
     buildCloseToTraySubmenu(ctx),
@@ -596,6 +679,10 @@ export function setSendCommandCallback(callback: (channel: string, ...args: unkn
 
 export function setGetMainWindowCallback(callback: () => BrowserWindow | null): void {
   getMainWindowCallback = callback;
+}
+
+export function setSwitchServiceCallback(callback: (serviceId: string) => void): void {
+  switchServiceCallback = callback;
 }
 
 export function updateNowPlayingState(payload: NowPlayingPayload | null, artworkPath: string | null, isPlaying: boolean, volume: number): void {

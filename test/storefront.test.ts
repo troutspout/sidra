@@ -2,13 +2,20 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import './mocks/storefront-deps';
 
-import { handleStorefrontNavigation } from '../src/storefront';
-import { getStorefront, setStorefront, getLanguage, setLanguage } from '../src/config';
+import { handleStorefrontNavigation, buildAppleMusicURL, extractStorefrontFromURL, handleLastPageNavigation } from '../src/storefront';
+import { getStorefront, setStorefront, getLanguage, setLanguage, getMusicService, getStartPage, getLastPageUrl, getClassicalStartPage, getClassicalLastPageUrl, setLastPageUrl, setClassicalLastPageUrl } from '../src/config';
 
 const mockedGetStorefront = vi.mocked(getStorefront);
 const mockedSetStorefront = vi.mocked(setStorefront);
 const mockedGetLanguage = vi.mocked(getLanguage);
 const mockedSetLanguage = vi.mocked(setLanguage);
+const mockedGetMusicService = vi.mocked(getMusicService);
+const mockedGetStartPage = vi.mocked(getStartPage);
+const mockedGetLastPageUrl = vi.mocked(getLastPageUrl);
+const mockedGetClassicalStartPage = vi.mocked(getClassicalStartPage);
+const mockedGetClassicalLastPageUrl = vi.mocked(getClassicalLastPageUrl);
+const mockedSetLastPageUrl = vi.mocked(setLastPageUrl);
+const mockedSetClassicalLastPageUrl = vi.mocked(setClassicalLastPageUrl);
 
 describe('handleStorefrontNavigation', () => {
   beforeEach(() => {
@@ -64,5 +71,171 @@ describe('handleStorefrontNavigation', () => {
     mockedGetLanguage.mockReturnValue('en-GB');
     handleStorefrontNavigation('https://music.apple.com/gb/album/foo?l=cy');
     expect(mockedSetLanguage).toHaveBeenCalledWith('cy');
+  });
+});
+
+describe('extractStorefrontFromURL', () => {
+  it('returns storefront and null language from a music URL with no language', () => {
+    const result = extractStorefrontFromURL('https://music.apple.com/gb/new');
+    expect(result).not.toBeNull();
+    expect(result!.storefront).toBe('gb');
+    expect(result!.language).toBeNull();
+  });
+
+  it('returns storefront and language from a music URL with language', () => {
+    const result = extractStorefrontFromURL('https://music.apple.com/gb/album/foo?l=en-GB');
+    expect(result).not.toBeNull();
+    expect(result!.storefront).toBe('gb');
+    expect(result!.language).toBe('en-GB');
+  });
+
+  it('returns storefront from a classical URL', () => {
+    const result = extractStorefrontFromURL('https://classical.music.apple.com/gb/browse');
+    expect(result).not.toBeNull();
+    expect(result!.storefront).toBe('gb');
+  });
+
+  it('returns null for classical URL with no path segments', () => {
+    expect(extractStorefrontFromURL('https://classical.music.apple.com/gb')).not.toBeNull();
+    expect(extractStorefrontFromURL('https://classical.music.apple.com/')).toBeNull();
+  });
+
+  it('returns null for an unknown host', () => {
+    expect(extractStorefrontFromURL('https://unknown.example.com/gb/new')).toBeNull();
+  });
+
+  it('returns null for a malformed URL', () => {
+    expect(extractStorefrontFromURL('not-a-url')).toBeNull();
+  });
+});
+
+describe('buildAppleMusicURL - music service', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedGetMusicService.mockReturnValue('music');
+    mockedGetStorefront.mockReturnValue('us');
+    mockedGetLanguage.mockReturnValue(null);
+  });
+
+  it('builds home URL', () => {
+    mockedGetStartPage.mockReturnValue('home');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://music.apple.com/us/home');
+  });
+
+  it('builds new URL', () => {
+    mockedGetStartPage.mockReturnValue('new');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://music.apple.com/us/new');
+  });
+
+  it('builds radio URL', () => {
+    mockedGetStartPage.mockReturnValue('radio');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://music.apple.com/us/radio');
+  });
+
+  it('builds all-playlists URL', () => {
+    mockedGetStartPage.mockReturnValue('all-playlists');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://music.apple.com/us/library/all-playlists/');
+  });
+
+  it('builds last URL when stored path exists', () => {
+    mockedGetStartPage.mockReturnValue('last');
+    mockedGetLastPageUrl.mockReturnValue('album/foo/123');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://music.apple.com/us/album/foo/123');
+  });
+
+  it('falls back to new when last is selected but no path stored', () => {
+    mockedGetStartPage.mockReturnValue('last');
+    mockedGetLastPageUrl.mockReturnValue(undefined);
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://music.apple.com/us/new');
+  });
+});
+
+describe('buildAppleMusicURL - classical service', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockedGetMusicService.mockReturnValue('classical');
+    mockedGetStorefront.mockReturnValue('gb');
+    mockedGetLanguage.mockReturnValue(null);
+  });
+
+  it('builds classical home URL', () => {
+    mockedGetClassicalStartPage.mockReturnValue('home');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://classical.music.apple.com/gb');
+  });
+
+  it('builds classical browse URL', () => {
+    mockedGetClassicalStartPage.mockReturnValue('browse');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://classical.music.apple.com/gb/browse');
+  });
+
+  it('builds classical library URL', () => {
+    mockedGetClassicalStartPage.mockReturnValue('library');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://classical.music.apple.com/gb/library');
+  });
+
+  it('builds classical playlists URL', () => {
+    mockedGetClassicalStartPage.mockReturnValue('playlists');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://classical.music.apple.com/gb/browse/playlists');
+  });
+
+  it('builds classical search URL', () => {
+    mockedGetClassicalStartPage.mockReturnValue('search');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://classical.music.apple.com/gb/search');
+  });
+
+  it('builds classical last URL when stored path exists', () => {
+    mockedGetClassicalStartPage.mockReturnValue('last');
+    mockedGetClassicalLastPageUrl.mockReturnValue('browse/albums');
+    const url = buildAppleMusicURL();
+    expect(url).toBe('https://classical.music.apple.com/gb/browse/albums');
+  });
+
+  it('falls back to default when last is selected but no path stored', () => {
+    mockedGetClassicalStartPage.mockReturnValue('last');
+    mockedGetClassicalLastPageUrl.mockReturnValue(undefined);
+    const url = buildAppleMusicURL();
+    // falls through to default (home), which has empty path
+    expect(url).toBe('https://classical.music.apple.com/gb');
+  });
+});
+
+describe('handleLastPageNavigation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('stores path against music service for music.apple.com URL', () => {
+    handleLastPageNavigation('https://music.apple.com/gb/album/foo/123');
+    expect(mockedSetLastPageUrl).toHaveBeenCalledWith('album/foo/123');
+    expect(mockedSetClassicalLastPageUrl).not.toHaveBeenCalled();
+  });
+
+  it('stores path against classical service for classical.music.apple.com URL', () => {
+    handleLastPageNavigation('https://classical.music.apple.com/gb/browse/albums');
+    expect(mockedSetClassicalLastPageUrl).toHaveBeenCalledWith('browse/albums');
+    expect(mockedSetLastPageUrl).not.toHaveBeenCalled();
+  });
+
+  it('does nothing for an unknown host', () => {
+    handleLastPageNavigation('https://example.com/gb/album/foo');
+    expect(mockedSetLastPageUrl).not.toHaveBeenCalled();
+    expect(mockedSetClassicalLastPageUrl).not.toHaveBeenCalled();
+  });
+
+  it('does nothing for a malformed URL', () => {
+    handleLastPageNavigation('not-a-url');
+    expect(mockedSetLastPageUrl).not.toHaveBeenCalled();
+    expect(mockedSetClassicalLastPageUrl).not.toHaveBeenCalled();
   });
 });

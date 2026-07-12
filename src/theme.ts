@@ -4,7 +4,7 @@ import { app, BrowserWindow, nativeTheme } from 'electron';
 import log from 'electron-log/main';
 import { BUNDLED_THEMES, type BundledThemeName } from './palettes';
 import { buildThemeCss } from './themeTemplate';
-import { getTheme } from './config';
+import { getTheme, getMusicService } from './config';
 
 export type ThemeName = 'apple-music' | BundledThemeName | 'custom';
 
@@ -42,6 +42,8 @@ function isThemeName(value: string): value is ThemeName {
 }
 
 export function resolveTheme(): ThemeName {
+  // Classical does not support bundled theme CSS (targets music.apple.com DOM)
+  if (getMusicService() === 'classical') return 'apple-music';
   const theme = getTheme();
   if (!isThemeName(theme)) return 'apple-music';
   if (theme === 'custom' && getThemeCss('custom') === null) return 'apple-music';

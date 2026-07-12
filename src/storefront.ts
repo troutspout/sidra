@@ -1,7 +1,7 @@
 import log from 'electron-log/main';
-import { getStorefront, setStorefront, getLanguage, setLanguage, getStartPage, getLastPageUrl, getMusicService } from './config';
+import { getStorefront, setStorefront, getLanguage, setLanguage, getStartPage, getLastPageUrl, getMusicService, getClassicalStartPage, getClassicalLastPageUrl, setClassicalLastPageUrl, setLastPageUrl } from './config';
 import { getStorefront as getLocaleStorefront } from './i18n';
-import { getService } from './musicService';
+import { getService, getServiceByHost } from './musicService';
 import type { ItmsRouteToken } from './itms';
 
 export type { ItmsRouteToken } from './itms';
@@ -37,12 +37,33 @@ export function buildAppleMusicURL(): string {
   storefrontLog.info(`storefront resolved: ${storefront} (${source})`);
 
   const language = getLanguage();
-  const startPage = getStartPage();
+  const serviceId = getMusicService();
+  const service = getService(serviceId);
 
+  if (serviceId === 'classical') {
+    const classicalStartPage = getClassicalStartPage();
+    if (classicalStartPage === 'last') {
+      const lastPath = getClassicalLastPageUrl();
+      if (lastPath) {
+        return appendLanguage(`${service.origin}/${storefront}/${lastPath}`, language);
+      }
+      // fall through: no stored path yet, use default
+    }
+    const pageEntry = service.startPages.find(p => p.id === classicalStartPage)
+      ?? service.startPages.find(p => p.id === service.defaultStartPage)!;
+    const pagePath = pageEntry.path;
+    if (pagePath === '') {
+      return appendLanguage(`${service.origin}/${storefront}`, language);
+    }
+    return appendLanguage(`${service.origin}/${storefront}/${pagePath}`, language);
+  }
+
+  // music service
+  const startPage = getStartPage();
   if (startPage === 'last') {
     const lastPath = getLastPageUrl();
     if (lastPath) {
-      return appendLanguage(`${getService(getMusicService()).origin}/${storefront}/${lastPath}`, language);
+      return appendLanguage(`${service.origin}/${storefront}/${lastPath}`, language);
     }
     // fall through: no stored path yet, use 'new'
   }
@@ -55,7 +76,7 @@ export function buildAppleMusicURL(): string {
   };
   const pagePath = pagePathMap[startPage] ?? pagePathMap['new'];
 
-  return appendLanguage(`${getService(getMusicService()).origin}/${storefront}/${pagePath}`, language);
+  return appendLanguage(`${service.origin}/${storefront}/${pagePath}`, language);
 }
 
 export function buildItmsRouteURL(token: ItmsRouteToken): string {
@@ -71,7 +92,8 @@ export function buildItmsRouteURL(token: ItmsRouteToken): string {
 export function extractStorefrontFromURL(url: string): { storefront: string; language: string | null } | null {
   try {
     const parsed = new URL(url);
-    if (parsed.hostname !== getService(getMusicService()).host) {
+    const service = getServiceByHost(parsed.hostname);
+    if (!service) {
       return null;
     }
     const segments = parsed.pathname.split('/').filter(Boolean);
@@ -110,5 +132,25 @@ export function handleStorefrontNavigation(url: string): void {
   }
   if (storefrontChanged || languageChanged) {
     storefrontLog.info(`storefront changed: ${result.storefront} (language: ${result.language ?? currentLanguage})`);
+  }
+}
+
+export function handleLastPageNavigation(url: string): void {
+  try {
+    const parsed = new URL(url);
+    const service = getServiceByHost(parsed.hostname);
+    if (!service) return;
+    const segments = parsed.pathname.split('/').filter(Boolean);
+    const pageSegments = segments[0] && /^[a-z]{2}$/.test(segments[0]) ? segments.slice(1) : segments;
+    if (pageSegments.length > 0) {
+      const path = pageSegments.join('/');
+      if (service.id === 'classical') {
+        setClassicalLastPageUrl(path);
+      } else {
+        setLastPageUrl(path);
+      }
+    }
+  } catch {
+    storefrontLog.warn('failed to parse URL for last-page tracking:', url);
   }
 }

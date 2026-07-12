@@ -52,6 +52,11 @@ export const SHARE_TEXT: Record<string, string> = trayData.SHARE_TEXT;
 export const HIDE_WINDOW_TEXT: Record<string, string> = trayData.HIDE_WINDOW_TEXT;
 export const SHOW_WINDOW_TEXT: Record<string, string> = trayData.SHOW_WINDOW_TEXT;
 export const CLOSE_TO_TRAY_TEXT: Record<string, string> = trayData.CLOSE_TO_TRAY_TEXT;
+export const PLAYER_TEXT: Record<string, string> = trayData.PLAYER_TEXT;
+export const START_PAGE_BROWSE_TEXT: Record<string, string> = trayData.START_PAGE_BROWSE_TEXT;
+export const START_PAGE_LIBRARY_TEXT: Record<string, string> = trayData.START_PAGE_LIBRARY_TEXT;
+export const START_PAGE_PLAYLISTS_TEXT: Record<string, string> = trayData.START_PAGE_PLAYLISTS_TEXT;
+export const START_PAGE_SEARCH_TEXT: Record<string, string> = trayData.START_PAGE_SEARCH_TEXT;
 
 export const UPDATE_AVAILABLE_TEXT: Record<string, string> = updateData.UPDATE_AVAILABLE_TEXT;
 export const UP_TO_DATE_TEXT: Record<string, string> = updateData.UP_TO_DATE_TEXT;
@@ -122,11 +127,16 @@ export interface TrayStrings {
   quit: string;
   notifications: string;
   discord: string;
+  player: string;
   startPage: string;
   startPageHome: string;
   startPageNew: string;
   startPageRadio: string;
   startPageAllPlaylists: string;
+  startPageBrowse: string;
+  startPageLibrary: string;
+  startPagePlaylists: string;
+  startPageSearch: string;
   startPageLast: string;
   on: string;
   off: string;
@@ -158,11 +168,16 @@ export function getTrayStrings(): TrayStrings {
   const quit = getLocalizedString(QUIT_TEXT, langs);
   const notifications = getLocalizedString(NOTIFICATIONS_TEXT, langs);
   const discord = getLocalizedString(DISCORD_TEXT, langs);
+  const player = getLocalizedString(PLAYER_TEXT, langs);
   const startPage = getLocalizedString(START_PAGE_TEXT, langs);
   const startPageHome = getLocalizedString(START_PAGE_HOME_TEXT, langs);
   const startPageNew = getLocalizedString(START_PAGE_NEW_TEXT, langs);
   const startPageRadio = getLocalizedString(START_PAGE_RADIO_TEXT, langs);
   const startPageAllPlaylists = getLocalizedString(START_PAGE_ALL_PLAYLISTS_TEXT, langs);
+  const startPageBrowse = getLocalizedString(START_PAGE_BROWSE_TEXT, langs);
+  const startPageLibrary = getLocalizedString(START_PAGE_LIBRARY_TEXT, langs);
+  const startPagePlaylists = getLocalizedString(START_PAGE_PLAYLISTS_TEXT, langs);
+  const startPageSearch = getLocalizedString(START_PAGE_SEARCH_TEXT, langs);
   const startPageLast = getLocalizedString(START_PAGE_LAST_TEXT, langs);
   const on = getLocalizedString(ON_TEXT, langs);
   const off = getLocalizedString(OFF_TEXT, langs);
@@ -184,7 +199,7 @@ export function getTrayStrings(): TrayStrings {
   const hideWindow = getLocalizedString(HIDE_WINDOW_TEXT, langs).replace('{name}', productName);
   const showWindow = getLocalizedString(SHOW_WINDOW_TEXT, langs).replace('{name}', productName);
   const closeToTray = getLocalizedString(CLOSE_TO_TRAY_TEXT, langs);
-  return { about, quit, notifications, discord, startPage, startPageHome, startPageNew, startPageRadio, startPageAllPlaylists, startPageLast, on, off, style, styleAppleMusic, zoom, zoom100, zoom125, zoom150, zoom175, zoom200, previous, play, pause, next, volume, mute, share, hideWindow, showWindow, closeToTray };
+  return { about, quit, notifications, discord, player, startPage, startPageHome, startPageNew, startPageRadio, startPageAllPlaylists, startPageBrowse, startPageLibrary, startPagePlaylists, startPageSearch, startPageLast, on, off, style, styleAppleMusic, zoom, zoom100, zoom125, zoom150, zoom175, zoom200, previous, play, pause, next, volume, mute, share, hideWindow, showWindow, closeToTray };
 }
 
 export function getAboutStrings(): {

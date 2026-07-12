@@ -2,18 +2,18 @@ import { app, BrowserWindow, components, ipcMain, Menu, session, shell, Tray, we
 import fs from 'fs';
 import path from 'path';
 import log from 'electron-log/main';
-import { setLastPageUrl, getZoomFactor, getCloseToTrayEnabled, getMusicService } from './config';
+import { getZoomFactor, getCloseToTrayEnabled, getMusicService, setMusicService } from './config';
 import { getLoadingText } from './i18n';
 import { getAssetPath } from './paths';
 import { Player, IntegrationContext } from './player';
-import { buildAppleMusicURL, buildItmsRouteURL, handleStorefrontNavigation } from './storefront';
+import { buildAppleMusicURL, buildItmsRouteURL, handleStorefrontNavigation, handleLastPageNavigation } from './storefront';
 import { extractItmsUrlFromArgv, type ItmsTarget } from './itms';
 import { getThemeCss, initThemeCSS, resolveTheme, setThemeCssKey } from './theme';
-import { createTray, getMenuIcon, initTrayStateManager, rebuildTrayMenu, setApplyZoomCallback, setSendCommandCallback, setGetMainWindowCallback } from './tray';
+import { createTray, getMenuIcon, initTrayStateManager, rebuildTrayMenu, setApplyZoomCallback, setSendCommandCallback, setGetMainWindowCallback, setSwitchServiceCallback } from './tray';
 import { showAboutWindow } from './aboutWindow';
 import { checkForUpdates } from './update';
 import { isAutoUpdateSupported, initAutoUpdate } from './autoUpdate';
-import { getService } from './musicService';
+import { getService, allServices } from './musicService';
 import { init as initNotifications } from './integrations/notifications';
 import { init as initDiscordPresence } from './integrations/discord-presence';
 import { init as initDock, setDockSendCommandCallback } from './integrations/macos-dock';
@@ -132,6 +132,12 @@ function routeItmsTarget(target: ItmsTarget | null): void {
     pendingItmsTarget = target;
     return;
   }
+  // itms:// always targets the music service; switch back if classical is active
+  if (getMusicService() !== 'music') {
+    setMusicService('music');
+    if (appTray) rebuildTrayMenu(appTray);
+    resetWedgeDetector();
+  }
   if (target.kind === 'url') {
     win.loadURL(target.url, { userAgent: UA }).catch(err =>
       mainLog.warn('itms loadURL failed:', (err as Error).message)
@@ -230,7 +236,7 @@ async function initSession(): Promise<Electron.Session> {
     components.whenReady(),
     ses.clearData({
       dataTypes: ['serviceWorkers', 'cache'],
-      origins: [getService(getMusicService()).origin],
+      origins: allServices().map(svc => svc.origin),
     }),
   ]);
   interface CdmComponentStatus {
@@ -288,7 +294,8 @@ function createMainWindow(ses: Electron.Session): { win: BrowserWindow; winReady
       win.webContents.once('did-navigate-in-page', () => {
         const poll = () => {
           if (pollCancelled) return;
-          win.webContents.executeJavaScript(contentReadyProbeScript())
+          const selector = getService(getMusicService()).contentReadySelector;
+          win.webContents.executeJavaScript(contentReadyProbeScript(selector))
             .then(ready => { if (ready) resolve(); else if (!pollCancelled) setTimeout(poll, CONTENT_READY_POLL_MS); })
             .catch(() => { if (!pollCancelled) setTimeout(poll, CONTENT_READY_POLL_MS); });
         };
@@ -315,7 +322,8 @@ function setupSessionHeaders(ses: Electron.Session): void {
   ses.setUserAgent(UA);
 
   // Strip Electron and app name tokens from outgoing request headers
-  ses.webRequest.onBeforeSendHeaders({ urls: [`${getService(getMusicService()).origin}/*`] }, (details, callback) => {
+  const urlFilters = allServices().map(svc => `${svc.origin}/*`);
+  ses.webRequest.onBeforeSendHeaders({ urls: urlFilters }, (details, callback) => {
     const ua = details.requestHeaders['User-Agent'];
     if (ua && ua !== UA) {
       details.requestHeaders['User-Agent'] = UA;
@@ -348,30 +356,23 @@ function setupNavigationHandlers(win: BrowserWindow, navBarScript: string, hookS
   });
   win.webContents.on('did-navigate-in-page', async (_event, url) => {
     handleStorefrontNavigation(url);
-    try {
-      const parsed = new URL(url);
-      if (parsed.hostname === getService(getMusicService()).host) {
-        const segments = parsed.pathname.split('/').filter(Boolean);
-        const pageSegments = segments[0] && /^[a-z]{2}$/.test(segments[0]) ? segments.slice(1) : segments;
-        if (pageSegments.length > 0) setLastPageUrl(pageSegments.join('/'));
-      }
-    } catch {
-      mainLog.warn('failed to parse URL for last-page tracking:', url);
-    }
+    handleLastPageNavigation(url);
     try {
       await win.webContents.executeJavaScript(hookScript);
     } catch (e: unknown) {
       mainLog.warn('failed to inject hookScript on SPA navigation:', e);
     }
-    try {
-      await win.webContents.executeJavaScript(navBarScript);
-    } catch (e: unknown) {
-      mainLog.warn('failed to inject navBarScript on SPA navigation:', e);
+    if (getMusicService() === 'music') {
+      try {
+        await win.webContents.executeJavaScript(navBarScript);
+      } catch (e: unknown) {
+        mainLog.warn('failed to inject navBarScript on SPA navigation:', e);
+      }
     }
   });
 }
 
-const AUTH_FRAME_HOSTS = new Set<string>(getService(getMusicService()).authFrameHosts);
+const AUTH_FRAME_HOSTS = new Set<string>(allServices().flatMap(svc => [...svc.authFrameHosts]));
 const AUTH_FRAME_LOG_PREFIX = '[sidra] auth-frame hide:';
 
 function buildAuthFrameInjectionScript(authCss: string): string {
@@ -575,20 +576,27 @@ function setupContentHandlers(win: BrowserWindow, player: Player, markCssReady: 
     win.webContents.setZoomFactor(getZoomFactor());
     await win.webContents.insertCSS(assets.STYLE_FIX_CSS);
     mainLog.debug('CSS fixes injected');
-    const theme = resolveTheme();
-    if (theme !== 'apple-music') {
-      const css = getThemeCss(theme);
-      if (css !== null) {
-        setThemeCssKey(await win.webContents.insertCSS(css));
-        mainLog.debug(`Theme CSS injected: ${theme}`);
-      } else {
-        mainLog.warn(`Theme CSS unavailable: ${theme}`);
+    const activeService = getMusicService();
+    if (activeService === 'music') {
+      const theme = resolveTheme();
+      if (theme !== 'apple-music') {
+        const css = getThemeCss(theme);
+        if (css !== null) {
+          setThemeCssKey(await win.webContents.insertCSS(css));
+          mainLog.debug(`Theme CSS injected: ${theme}`);
+        } else {
+          mainLog.warn(`Theme CSS unavailable: ${theme}`);
+        }
       }
+    } else {
+      setThemeCssKey(null);
     }
     await win.webContents.executeJavaScript(assets.hookScript);
     mainLog.debug('MusicKit hook injected');
-    await win.webContents.executeJavaScript(assets.navBarScript);
-    mainLog.debug('Navigation bar injected');
+    if (activeService === 'music') {
+      await win.webContents.executeJavaScript(assets.navBarScript);
+      mainLog.debug('Navigation bar injected');
+    }
   }
 
   let initialized = false;
@@ -658,6 +666,11 @@ if (gotLock) {
     setGetMainWindowCallback(() => win);
     setDockSendCommandCallback((channel, ...args) => win!.webContents.send(channel, ...args));
     setTaskbarSendCommandCallback((channel, ...args) => win!.webContents.send(channel, ...args));
+    setSwitchServiceCallback((_serviceId) => {
+      resetWedgeDetector();
+      setThemeCssKey(null);
+      win!.loadURL(buildAppleMusicURL(), { userAgent: UA });
+    });
     setupWindowZoomAndNav(win);
     initThemeCSS(win);
     setupSplashTransition(win, splash, minDisplay, cssReady, winReady);

@@ -5,6 +5,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('../src/config', () => ({
   getTheme: vi.fn(),
+  getMusicService: vi.fn(() => 'music'),
 }));
 
 vi.mock('fs', () => ({

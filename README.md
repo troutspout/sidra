@@ -29,6 +29,7 @@ Sidra takes the opposite approach: wrap `music.apple.com` directly, stay out of 
 - Localised storefront and interface in 32 languages
 - Desktop notifications and Discord Rich Presence
 - Injected Back, Forward, and Reload navigation controls
+- Apple Music Classical support (switchable at runtime from the tray Player submenu)
 - **Linux**:
   - Widevine DRM via CastLabs Electron
   - Wayland and X11 support
