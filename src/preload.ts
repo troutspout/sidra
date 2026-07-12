@@ -36,6 +36,8 @@ const RECEIVE_CHANNELS = new Set<ReceiveChannel>([
 // musicKitHook.js listens for these messages and dispatches to __sidra methods.
 for (const channel of RECEIVE_CHANNELS) {
   ipcRenderer.on(channel, (_event, ...args: unknown[]) => {
+    // Intentionally a literal: sandboxed preload scripts cannot require local
+    // modules. Sync is enforced by the contract test in test/musicService.test.ts.
     window.postMessage({ type: 'sidra:command', channel, args }, 'https://music.apple.com');
   });
 }
